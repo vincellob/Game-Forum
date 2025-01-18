@@ -1,0 +1,40 @@
+on:
+  push:
+    branches:
+      - models
+    paths:
+      - compose.kafka.yml
+      - .github/workflows/kafka.yml
+
+jobs:
+  kafka_compose:
+    name: Test
+    runs-on: [self-hosted, kafka]
+
+    steps:
+      # Step 1: Checkout only the `compose.kafka.yml` file
+      - name: Checkout Single File
+        uses: actions/checkout@v4
+        with:
+          # Fetch only the last commit for minimal data
+          fetch-depth: 1
+          # Sparse checkout configuration to include only the required file
+          sparse-checkout-config: |
+            set
+            /compose.kafka.yml
+
+      # Step 2: Stop existing containers
+      - name: Stop existing containers
+        run: |
+          docker compose -f compose.kafka.yml down
+
+      # Step 3: (Optional) Prune unused resources
+      - name: Prune Docker system
+        run: |
+          docker system prune -f
+        if: always()  # Ensures this step runs even if earlier steps fail
+
+      # Step 4: Build and deploy containers
+      - name: Deploy containers
+        run: |
+          docker compose -f compose.kafka.yml up --build --force-recreate -d

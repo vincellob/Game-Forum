@@ -1,0 +1,38 @@
+# https://www.youtube.com/watch?v=rRes9LM-Jh8
+# Great tutorial on CI/CD pipeline with github actions, Docker and EC2
+name: Docker Image CI
+
+# https://stackoverflow.com/a/64733705
+on:
+  workflow_run:
+    workflows: ["Run tests"]
+    branches: [main]
+    types:
+      - completed
+
+# https://github.com/orgs/community/discussions/66512
+# Added explicit check to make sure previous job is successful
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    env:
+      DOCKER_REPO: ${{ secrets.DOCKER_USERNAME }}/project2-frontend:dev
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+        continue-on-error: false
+      
+      - name: Create updated image build
+        run: |
+          docker build . -t $DOCKER_REPO
+          docker push $DOCKER_REPO
